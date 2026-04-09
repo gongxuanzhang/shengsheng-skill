@@ -17,7 +17,7 @@ cp -r shengsheng-skill/<skill-name> ~/.claude/skills/
 
 | Skill | 说明 |
 |-------|------|
-| [project-doc-sync](./project-doc-sync) | 自动同步维护项目的 `todo.md` 和 `CLAUDE.md`，讨论出任务时追加、完成时删除、确认设计方案时更新架构文档 |
+| [project-doc-sync](./project-doc-sync) | 自动同步维护项目的 `todo.md`、`CLAUDE.md` 及其引用的关联文档，讨论出任务时追加、完成时删除、确认设计方案时更新架构文档并级联更新所有关联文档 |
 
 ## License
 
