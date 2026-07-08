@@ -2,8 +2,10 @@
 name: github-issue-solution-loop
 description: >
   持续处理 GitHub issue：先在 issue 中和发起者/维护者讨论并对齐方案，方案认可后推进实现或关联 PR review。
-  Use this skill when the user asks to solve, monitor, discuss, or continuously loop on a GitHub issue until
-  the solution is agreed, implementation is allowed, related PRs are reviewed, or the requested duration ends.
+  Use this skill when the user asks to solve, monitor, discuss, keep watching, create a background issue loop for,
+  or continuously loop on a GitHub issue until the solution is agreed, implementation is allowed, related PRs are
+  reviewed, or the requested duration ends. When running inside Codex, prefer heartbeat automation for real
+  background polling.
 ---
 
 # GitHub Issue Solution Loop
@@ -20,6 +22,7 @@ description: >
 - 不使用本机已有的个人 `gh auth` 登录态。
 - 不使用其他账号或 token。
 - 不打印、不 echo、不暴露 token。
+- 在 Codex 客户端中需要持续观察时，优先使用 heartbeat automation 做真正后台轮询，不只依赖一个前台 sleep loop。
 - 推荐命令形式：
 
 ```bash
@@ -37,6 +40,8 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh pr view <pr>
 - 默认持续时间：用户未指定时运行 **2 小时**。
 - 默认范围：用户指定的 issue。
 - 如果用户要求扫描多个 issue，每轮都重新查询目标范围，不能因为上轮数量固定就提前停止。
+- 优先创建或更新挂在当前 Codex session 上的 heartbeat automation；每次唤醒执行一轮 issue/PR 扫描，然后交回给 automation 调度下一轮。
+- 根据当前 active issue 或关联 PR 更新当前 Codex session 标题；如果运行环境没有 session 标题控制能力，则跳过，不影响 loop。
 - 如果某轮发布了 issue comment、更新了 PR、执行了 PR review/comment，立刻开始下一轮扫描。
 - 如果某轮没有任何动作，等待 **5 分钟** 后再扫描。
 - 到达持续时间后停止，并总结：
@@ -74,6 +79,41 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh api repos/<owner>/<repo>/issues/<issue>/timeline
 ```
 
 当 `gh issue view` 信息不足时，用 `gh api` 查询 timeline 或 linked PR。
+
+---
+
+## Codex 后台轮询
+
+当用户要求持续观察、后台监控、issue loop 或 keep watching 时，不要只靠当前 turn 长时间 sleep。优先使用 Codex app 的 heartbeat automation，让当前 session 按固定节奏被唤醒。
+
+执行规则：
+
+1. 根据用户指定的持续时间计算绝对截止时间；未指定时默认为 2 小时。
+2. 如果 Codex app 提供 automation 工具，创建或更新挂在当前 session 上的 heartbeat automation。
+3. heartbeat 每 5 分钟唤醒当前 session 一次。
+4. heartbeat prompt 必须包含完整 loop 状态：仓库、issue 范围、截止时间、GitHub 身份规则、`gh` 命令规则、独立目录规则、先讨论方案规则、写代码权限闸门、关联 PR review 规则、当前总结状态，以及“每次唤醒只执行一轮 issue/PR 扫描”的要求。
+5. 每次唤醒时先检查是否超过截止时间；超过则输出最终总结并暂停或删除 heartbeat。
+6. 如果本轮发布了 issue comment、更新了 PR 或提交了 PR review/comment，则在同次唤醒中立刻额外扫描一轮，然后结束本次唤醒，等待下一次 heartbeat。
+7. 如果当前环境没有 automation 工具，才退回当前 session 内的前台轮询。
+
+不要在回复里手写原始 automation 指令；创建、更新、暂停或删除后台轮询时，使用 Codex app 提供的 automation 工具。
+
+---
+
+## Codex Session 标题
+
+如果当前运行在 Codex 客户端中，并且可以修改当前 session 标题，则用当前 active GitHub 目标生成标题，方便侧边栏识别这个 session 正在处理什么。
+
+标题规则：
+
+- 还没有关联 PR 前，使用 `Issue #<number>: <issue title>`。
+- 一旦有关联 PR 成为当前 active 目标，使用 `PR #<number>: <PR title>`。
+- 如果存在多个关联 PR，使用当前正在讨论、实现或 review 的 PR；如果没有明确 active PR，则继续使用 issue 标题。
+- 标题过长时截断到大约 80 个字符，保证 Codex 侧边栏可读。
+- 不要把 secret、敏感客户信息、过长 issue 正文或异常长分支名放进 session 标题。
+- 如果标题为空或不可用，回退到 `Issue #<number>` 或 `PR #<number>: <head branch>`。
+
+在 Codex desktop app 中，优先使用可用的 thread title 控制能力和当前 thread id。没有该能力时静默跳过，不要中断 issue/PR loop。
 
 ---
 
