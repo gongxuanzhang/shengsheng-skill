@@ -26,6 +26,7 @@ description: >
 - 在 Codex 客户端中需要持续观察时，优先使用 heartbeat automation 做真正后台轮询，不只依赖一个前台 sleep loop。
 - 禁止写代码、改文件、建分支、commit、push、开 PR 或更新 PR 内容。
 - 方案达成一致后，只要求 issue 作者或维护者提交/更新 PR，然后等待并 review。
+- review 关联 PR 时不执行测试命令；默认 PR 提交流程或 CI 已经跑过必要测试，只从代码和 diff 判断测试覆盖是否足够。
 - 推荐命令形式：
 
 ```bash
@@ -163,6 +164,7 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh api repos/<owner>/<repo>/issues/<issue>/timeline
 一旦 issue 有别人提交的相关 PR，就按 PR review loop 处理：
 
 - 检查 PR head SHA、最新评论、最新 review、最新提交和 bot 上一次 review 状态。
+- 不执行测试命令；默认 PR 提交流程或 CI 已经跑过必要测试。
 - 如果当前最新有效状态已经是 bot 针对当前 head SHA 发出的 review，且之后没有新提交、评论、review 回复或其它需要复审的更新，则本轮跳过。
 - 没有阻断问题时 approve。
 - 有阻断问题时 request changes。

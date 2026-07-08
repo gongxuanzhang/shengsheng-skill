@@ -24,6 +24,7 @@ description: >
 - 不使用其他账号或 token。
 - 不打印、不 echo、不暴露 token。
 - 在 Codex 客户端中需要持续观察时，优先使用 heartbeat automation 做真正后台轮询，不只依赖一个前台 sleep loop。
+- review 时不执行测试命令；默认 PR 提交流程或 CI 已经跑过必要测试，只从代码和 diff 判断测试覆盖是否足够。
 - 推荐命令形式：
 
 ```bash
@@ -139,7 +140,8 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh pr view <pr> --json number,title,body,author,hea
 - 每个 PR 使用独立 review 目录，例如 `/tmp/github-pr-review/<repo>/pr-<number>-<head-sha>`。
 - 禁止使用 `git worktree`。
 - review 过程中不要修改代码或仓库文件。
-- review 时不需要跑测试；提交 PR 的流程会保证测试通过。
+- review 时不执行测试命令；默认 PR 提交流程或 CI 已经跑过必要测试。
+- 可以基于代码和 diff 判断是否缺少必要测试，但不要自己运行测试。
 - 阅读 diff 和必要上下文，优先判断语义正确性，而不是格式偏好。
 
 阻断问题包括但不限于：
