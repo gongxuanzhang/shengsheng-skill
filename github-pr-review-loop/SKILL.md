@@ -39,6 +39,7 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh pr review <pr> --approve --body "<body>"
 - 扫描范围：
   - 用户指定某个 PR：只持续处理该 PR。
   - 用户未指定 PR：每轮扫描当前仓库所有 open PR。
+- 当确定当前正在处理的 PR 后，根据 PR 内容更新当前 Codex session 标题；如果运行环境没有 session 标题控制能力，则跳过，不影响 review loop。
 - 如果某轮执行了任何 review/comment，立刻开始下一轮扫描。
 - 如果某轮没有执行任何 review/comment，等待 **5 分钟** 后再扫描。
 - 到达持续时间后停止，并总结：
@@ -73,6 +74,22 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh pr view <pr> --json number,title,body,author,hea
 ```
 
 当 `gh pr view` 信息不足时，用 `gh api` 查询 timeline、review threads 或具体 review comments。
+
+---
+
+## Codex Session 标题
+
+如果当前运行在 Codex 客户端中，并且可以修改当前 session 标题，则用当前关联 PR 生成标题，方便侧边栏识别这个 session 正在处理什么。
+
+标题规则：
+
+- 单 PR loop：使用 `PR #<number>: <PR title>`。
+- 全量 open PR loop：还没有进入具体 PR 前使用 `PR review: <owner>/<repo>`；开始 review 某个 PR 时切换为 `PR #<number>: <PR title>`。
+- 标题过长时截断到大约 80 个字符，保证 Codex 侧边栏可读。
+- 不要把 secret、敏感客户信息、过长 issue 正文或异常长分支名放进 session 标题。
+- 如果 PR title 为空或不可用，回退到 `PR #<number>: <head branch>`。
+
+在 Codex desktop app 中，优先使用可用的 thread title 控制能力（例如 `set_thread_title`）和当前 thread id。没有该能力时静默跳过，不要中断 review。
 
 ---
 

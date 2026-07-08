@@ -37,6 +37,7 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh pr view <pr>
 - 默认持续时间：用户未指定时运行 **2 小时**。
 - 默认范围：用户指定的 issue。
 - 如果用户要求扫描多个 issue，每轮都重新查询目标范围，不能因为上轮数量固定就提前停止。
+- 根据当前 active issue 或关联 PR 更新当前 Codex session 标题；如果运行环境没有 session 标题控制能力，则跳过，不影响 loop。
 - 如果某轮发布了 issue comment、更新了 PR、执行了 PR review/comment，立刻开始下一轮扫描。
 - 如果某轮没有任何动作，等待 **5 分钟** 后再扫描。
 - 到达持续时间后停止，并总结：
@@ -74,6 +75,23 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh api repos/<owner>/<repo>/issues/<issue>/timeline
 ```
 
 当 `gh issue view` 信息不足时，用 `gh api` 查询 timeline 或 linked PR。
+
+---
+
+## Codex Session 标题
+
+如果当前运行在 Codex 客户端中，并且可以修改当前 session 标题，则用当前 active GitHub 目标生成标题，方便侧边栏识别这个 session 正在处理什么。
+
+标题规则：
+
+- 还没有关联 PR 前，使用 `Issue #<number>: <issue title>`。
+- 一旦有关联 PR 成为当前 active 目标，使用 `PR #<number>: <PR title>`。
+- 如果存在多个关联 PR，使用当前正在讨论、实现或 review 的 PR；如果没有明确 active PR，则继续使用 issue 标题。
+- 标题过长时截断到大约 80 个字符，保证 Codex 侧边栏可读。
+- 不要把 secret、敏感客户信息、过长 issue 正文或异常长分支名放进 session 标题。
+- 如果标题为空或不可用，回退到 `Issue #<number>` 或 `PR #<number>: <head branch>`。
+
+在 Codex desktop app 中，优先使用可用的 thread title 控制能力（例如 `set_thread_title`）和当前 thread id。没有该能力时静默跳过，不要中断 issue/PR loop。
 
 ---
 
