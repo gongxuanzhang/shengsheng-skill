@@ -95,7 +95,7 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh api repos/<owner>/<repo>/issues/<issue>/timeline
 1. 根据用户指定的持续时间计算绝对截止时间；未指定时默认为 2 小时。
 2. 如果 Codex app 提供 automation 工具，创建或更新挂在当前 session 上的 heartbeat automation。
 3. heartbeat 每 5 分钟唤醒当前 session 一次。
-4. heartbeat prompt 必须包含完整 loop 状态：仓库、issue 范围、截止时间、GitHub 身份规则、`gh` 命令规则、独立目录规则、no-code reviewer 边界、先讨论方案规则、关联 PR review 规则、当前总结状态，以及“每次唤醒只执行一轮 issue/PR 扫描”的要求。
+4. heartbeat prompt 必须包含完整 loop 状态：仓库、issue 范围、截止时间、GitHub 身份规则、`gh` 命令规则、no-code reviewer 边界、先讨论方案规则、关联 PR review 规则、不跑测试规则、当前总结状态，以及“每次唤醒只执行一轮 issue/PR 扫描”的要求。
 5. 每次唤醒时先检查是否超过截止时间；超过则输出最终总结并暂停或删除 heartbeat。
 6. 如果本轮发布了 issue comment 或提交了 PR review/comment，则在同次唤醒中立刻额外扫描一轮，然后结束本次唤醒，等待下一次 heartbeat。
 7. 如果当前环境没有 automation 工具，才退回当前 session 内的前台轮询。
@@ -158,6 +158,8 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh api repos/<owner>/<repo>/issues/<issue>/timeline
 - 提供实现补丁。
 
 如果用户要求这个 skill 实现 issue，说明 `github-issue-solution-loop` 是 reviewer-only，并建议切换到单独的实现工作流。本 loop 继续只负责 issue 方案讨论和关联 PR review。
+
+---
 
 ## 相关 PR Review 标准
 
