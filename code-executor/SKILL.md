@@ -123,9 +123,11 @@ Hand the DAG to a `Workflow`. Model it so that **each PR is an item**, dependenc
 and dependents only start once their prerequisites' PRs are open/green. Use `isolation: 'worktree'`
 for agents that mutate files in parallel so they don't collide. Each per-PR agent:
 
-1. Implements that PR's scoped change on its own branch.
-2. Runs `DIFF_TEST_CMD` (diff tests only — see Test Strategy).
-3. Opens the PR with a clear description linking back to the issue.
+1. Clones / branches off `main` and starts coding immediately. **No baseline test run** — `main` is
+   assumed green (see Test Strategy).
+2. Implements that PR's scoped change on its own branch.
+3. Runs **`DIFF_TEST_CMD` only** — never the full suite, no matter how many iterations it takes.
+4. Opens the PR with a clear description linking back to the issue.
 
 After the PRs are open, each of them is now a **Path B** target for the polling loop.
 
@@ -150,7 +152,8 @@ do not defensively reject. For blocking or genuinely-sound points, act. For unso
 ### B3. Modify code (改代码 — 只跑 diff 测试)
 
 1. Make the changes for adopted/partially-adopted points.
-2. Run **`DIFF_TEST_CMD` only** — not the full suite (see Test Strategy for why).
+2. Run **`DIFF_TEST_CMD` only** — never the full suite here, however many review cycles this takes, and
+   however "core" the touched code looks. The full suite belongs to B4 alone (see Test Strategy).
 3. If `AUTO_COMMENT` on, reply on the PR: what you adopted, what you deferred, and — respectfully — what you declined and why. Push the commit.
 4. Return control to the main agent; the next wakeup picks up the following review cycle.
 
@@ -166,11 +169,35 @@ Reached when the PR is approved OR judged mergeable.
 
 ## Test Strategy (测试策略)
 
-- **While modifying code (B3, A3):** run **only diff tests** (`DIFF_TEST_CMD`) — fast feedback on what changed.
-- **Only immediately before merge (B4):** run the **full suite** (`FULL_TEST_CMD`).
+**Baseline assumption: `main` is always green.** 我们默认主干上的程序是可运行的。You do NOT re-verify
+that premise, ever. Anything you find broken that your diff did not touch is **not your problem** and
+**not a reason to run more tests** — note it and move on.
+
+Therefore:
+
+- **Right after clone / checkout / worktree setup:** run **nothing**. No smoke test, no "let me just
+  confirm the baseline builds", no full suite. The tree came from `main`; it works. Start coding.
+- **While modifying code (B3, A3):** run **only diff tests** (`DIFF_TEST_CMD`) — fast feedback on what
+  changed, and nothing else. However many times you iterate on the code, this is still the only command
+  you run.
+- **Only immediately before merge (B4):** run the **full suite** (`FULL_TEST_CMD`). This is the *single*
+  place in the entire lifecycle where the full suite runs.
 - The full suite is the single merge gate. Red full suite ⇒ no merge, no exceptions.
 
-This split is deliberate: fast iteration on the diff, one authoritative gate at the boundary.
+### 反面模式 (do NOT do these)
+
+Each of these is a real temptation and each one is wrong:
+
+| ✗ Anti-pattern | Why it's wrong |
+|---|---|
+| Full suite after cloning, "to establish a baseline" | `main` is green by definition. You're spending minutes to learn something you already assumed. |
+| Full suite after each code edit, "to be safe" | That's what the B4 merge gate is for. Iterating against the full suite is how a 7-minute loop becomes a 40-minute one. |
+| Full suite because the diff "touches something core" | Scope is decided by the diff, not by your anxiety about the diff. `DIFF_TEST_CMD` still. |
+| Full suite because diff tests passed and you want confirmation | Diff green *is* the confirmation. Confirmation-of-confirmation buys nothing. |
+| Running unrelated failing tests you noticed | Guardrail 7: never touch unrelated work. Not your diff, not your problem. |
+
+This split is deliberate: **fast iteration on the diff, exactly one authoritative gate at the boundary.**
+The cost of a full suite is paid once, at merge, and never before.
 
 ---
 
