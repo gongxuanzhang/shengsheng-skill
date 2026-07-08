@@ -2,9 +2,11 @@
 name: github-pr-review-loop
 description: >
   持续 review GitHub Pull Request，直到可以 approve、明确 request changes，或到达持续时间。
-  Use this skill when the user asks to review, monitor, approve, request changes on, or continuously loop over
-  one PR or all open PRs in the current GitHub repository. The loop checks head SHA, commits, comments,
-  review replies, latest reviews, and the bot's previous review state before deciding whether to skip or re-review.
+  Use this skill when the user asks to review, monitor, approve, request changes on, keep watching, create a
+  background review loop for, or continuously loop over one PR or all open PRs in the current GitHub repository.
+  The loop checks head SHA, commits, comments, review replies, latest reviews, and the bot's previous review state
+  before deciding whether to skip or re-review. When running inside Codex, prefer heartbeat automation for real
+  background polling.
 ---
 
 # GitHub PR Review Loop
@@ -21,6 +23,8 @@ description: >
 - 不使用本机已有的个人 `gh auth` 登录态。
 - 不使用其他账号或 token。
 - 不打印、不 echo、不暴露 token。
+- 在 Codex 客户端中需要持续观察时，优先使用 heartbeat automation 做真正后台轮询，不只依赖一个前台 sleep loop。
+- review 时不执行测试命令；默认 PR 提交流程或 CI 已经跑过必要测试，只从代码和 diff 判断测试覆盖是否足够。
 - 推荐命令形式：
 
 ```bash
@@ -39,6 +43,8 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh pr review <pr> --approve --body "<body>"
 - 扫描范围：
   - 用户指定某个 PR：只持续处理该 PR。
   - 用户未指定 PR：每轮扫描当前仓库所有 open PR。
+- 优先创建或更新挂在当前 Codex session 上的 heartbeat automation；每次唤醒执行一轮扫描，然后交回给 automation 调度下一轮。
+- 当确定当前正在处理的 PR 后，根据 PR 内容更新当前 Codex session 标题；如果运行环境没有 session 标题控制能力，则跳过，不影响 review loop。
 - 如果某轮执行了任何 review/comment，立刻开始下一轮扫描。
 - 如果某轮没有执行任何 review/comment，等待 **5 分钟** 后再扫描。
 - 到达持续时间后停止，并总结：
@@ -76,6 +82,40 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh pr view <pr> --json number,title,body,author,hea
 
 ---
 
+## Codex 后台轮询
+
+当用户要求持续观察、后台监控、review loop 或 keep watching 时，不要只靠当前 turn 长时间 sleep。优先使用 Codex app 的 heartbeat automation，让当前 session 按固定节奏被唤醒。
+
+执行规则：
+
+1. 根据用户指定的持续时间计算绝对截止时间；未指定时默认为 2 小时。
+2. 如果 Codex app 提供 automation 工具，创建或更新挂在当前 session 上的 heartbeat automation。
+3. heartbeat 每 5 分钟唤醒当前 session 一次。
+4. heartbeat prompt 必须包含完整 loop 状态：仓库、PR 范围、截止时间、GitHub 身份规则、`gh` 命令规则、独立目录规则、不跑测试规则、当前总结状态，以及“每次唤醒只执行一轮扫描/review”的要求。
+5. 每次唤醒时先检查是否超过截止时间；超过则输出最终总结并暂停或删除 heartbeat。
+6. 如果本轮提交了 review/comment，则在同次唤醒中立刻额外扫描一轮，然后结束本次唤醒，等待下一次 heartbeat。
+7. 如果当前环境没有 automation 工具，才退回当前 session 内的前台轮询。
+
+不要在回复里手写原始 automation 指令；创建、更新、暂停或删除后台轮询时，使用 Codex app 提供的 automation 工具。
+
+---
+
+## Codex Session 标题
+
+如果当前运行在 Codex 客户端中，并且可以修改当前 session 标题，则用当前关联 PR 生成标题，方便侧边栏识别这个 session 正在处理什么。
+
+标题规则：
+
+- 单 PR loop：使用 `PR #<number>: <PR title>`。
+- 全量 open PR loop：还没有进入具体 PR 前使用 `PR review: <owner>/<repo>`；开始 review 某个 PR 时切换为 `PR #<number>: <PR title>`。
+- 标题过长时截断到大约 80 个字符，保证 Codex 侧边栏可读。
+- 不要把 secret、敏感客户信息、过长 issue 正文或异常长分支名放进 session 标题。
+- 如果 PR title 为空或不可用，回退到 `PR #<number>: <head branch>`。
+
+在 Codex desktop app 中，优先使用可用的 thread title 控制能力和当前 thread id。没有该能力时静默跳过，不要中断 review。
+
+---
+
 ## 跳过规则
 
 只有同时满足以下条件，当前扫描轮才可以跳过某个 PR：
@@ -100,7 +140,8 @@ GH_TOKEN="$GITHUB_BOT_TOKEN" gh pr view <pr> --json number,title,body,author,hea
 - 每个 PR 使用独立 review 目录，例如 `/tmp/github-pr-review/<repo>/pr-<number>-<head-sha>`。
 - 禁止使用 `git worktree`。
 - review 过程中不要修改代码或仓库文件。
-- review 时不需要跑测试；提交 PR 的流程会保证测试通过。
+- review 时不执行测试命令；默认 PR 提交流程或 CI 已经跑过必要测试。
+- 可以基于代码和 diff 判断是否缺少必要测试，但不要自己运行测试。
 - 阅读 diff 和必要上下文，优先判断语义正确性，而不是格式偏好。
 
 阻断问题包括但不限于：
