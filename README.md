@@ -24,6 +24,23 @@ cp -r shengsheng-skill/<skill-name> ~/.claude/skills/
 | [proposal-review](./proposal-review) | 通过对话式工作流生成方案审核清单，覆盖方案背景、修改内容、影响范围、风险评估、回滚方案、相关文档及审核检查项，适用于交给团队评审 |
 | [review-regression](./review-regression) | 审核意见回归讨论——对返回的评审意见逐条批判性分析，取其精华弃其糟粕，不盲从权威，不明确时反问用户，最终输出修订方案与回复意见 |
 
+## 三个 GitHub 自动化 Skill 怎么选
+
+`code-executor`、`github-issue-solution-loop`、`github-pr-review-loop` 都围绕 GitHub issue/PR 自动化，但定位不同：
+
+| 维度 | code-executor | github-issue-solution-loop | github-pr-review-loop |
+|---|---|---|---|
+| 一句话 | 接手 issue/PR 一路干到合并 | 盯着 issue 把方案讨论到一致 | 盯着 PR 给出 review 结论 |
+| 会写代码 | 会 | 默认不写，授权后才写 | 不会 |
+| 会合并 | 会（`AUTO_MERGE`） | 不会 | 不会 |
+| 会 review | 会（消化意见并改代码） | 相关 PR 会 | 会（核心职责） |
+| GitHub 身份 | 本机个人 `gh` 登录态 | 机器人 `GITHUB_BOT_TOKEN` | 机器人 `GITHUB_BOT_TOKEN` |
+| 运行边界 | 直到合并/关闭，或无进展上限 | 默认 2 小时 | 默认 2 小时 |
+| 并行多 PR | 会（`Workflow` + worktree） | 不会 | 不会 |
+| 个人使用习惯（作者） | 用来**编写** issue 和 PR | 用来**评审**（不授权写码，只讨论对齐 + 评审相关 PR） | 用来**评审** PR |
+
+> 💡 **作者的组合用法**：`code-executor` 负责“写”（编写并推进 issue/PR 到合并），两个 loop 负责“审”。这套组合可以**完全 0 人参与托管**——但前提是 **issue 里必须把验证/验收标准写清楚**，否则自动执行缺少可信的“完成判据”，容易跑偏或误合并。
+
 ## License
 
 MIT
