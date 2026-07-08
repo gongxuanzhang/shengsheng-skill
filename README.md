@@ -17,6 +17,7 @@ cp -r shengsheng-skill/<skill-name> ~/.claude/skills/
 
 | Skill | 说明 |
 |-------|------|
+| [code-executor](./code-executor) | 自主代码执行者：输入一个 GitHub issue 或 PR，自动推进到合并——issue 先讨论方案至一致再拆解为多个 PR 并行执行，PR 则消化 review 意见后独立改代码并轮询至可合并。依赖 [review-regression](./review-regression)，建议一并安装 |
 | [github-pr-review-loop](./github-pr-review-loop) | 持续观察并 review GitHub PR，按 head SHA、提交、评论、review 回复等变化决定是否复审，无阻断则 approve，有阻断则 request changes |
 | [github-issue-solution-loop](./github-issue-solution-loop) | 持续处理 GitHub issue，先在 issue 中讨论并对齐方案，方案认可后推进实现或关联 PR review |
 | [project-doc-sync](./project-doc-sync) | 自动同步维护项目的 `todo.md`、`CLAUDE.md` 及其引用的关联文档，讨论出任务时追加、完成时删除、确认设计方案时更新架构文档并级联更新所有关联文档 |
